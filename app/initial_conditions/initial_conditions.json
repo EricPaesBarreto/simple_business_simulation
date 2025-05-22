@@ -1,0 +1,18 @@
+{
+    "seed": 42,
+    "start_year": 2020,
+    "start_month": 1,
+    "end_year": 2025,
+    "end_month": 5,
+    "avg_transaction_value": 25,
+    "initial_transactions": 1800,
+    "final_transactions": 2200,
+    "seasonal_strength": 0.2,
+    "initial_staff": 20,
+    "upkeep": 3000,
+    "staff": 12000,
+    "operating_fees": 1500,
+    "insurance": 800,
+    "inflation_start": 0.02,
+    "inflation_end": 0.05
+}

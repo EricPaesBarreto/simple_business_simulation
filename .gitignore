@@ -1,0 +1,7 @@
+# virtual environment(s)
+.venv
+venv
+
+# outputs(s)
+simulation_graphs.png
+simulation.csv
