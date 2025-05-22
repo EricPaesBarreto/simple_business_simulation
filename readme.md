@@ -11,3 +11,5 @@ The requirements are stored in the requirements.txt, you can install them onto a
 To run the app open a git bash terminal and run:</br>
 
 `streamlit run app.py`
+
+(make sure you cd into ./app)
