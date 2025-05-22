@@ -1,0 +1,35 @@
+{
+  "seed": 42,
+  "start_year": 2021,
+  "start_month": 3,
+  "end_year": 2025,
+  "end_month": 5,
+  "avg_transaction_value": 25,
+  "initial_transactions": 7000,
+  "final_transactions": 9100,
+  "seasonal_strength": 0.2,
+  "initial_staff": 5,
+
+  "inflation_start": 1.0,
+  "inflation_end": 1.18,
+
+  "upkeep": 1000,
+  "staff": 5000,
+  "operating_fees": 63000,
+  "insurance": 15000,
+
+  "tax_brackets": {
+    "low": { "threshold": 25000, "rate": 0.10 },
+    "mid": { "threshold": 60000, "rate": 0.15 },
+    "high": { "rate": 0.21 }
+  },
+
+  "event_dips": {
+    "2021-03": 0.75,
+    "2021-12": 0.85,
+    "2022-03": 0.90,
+    "2023-07": 0.95,
+    "2024-11": 0.88,
+    "2025-01": 0.92
+  }
+}

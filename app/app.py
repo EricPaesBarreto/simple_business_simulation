@@ -15,12 +15,13 @@ plt.ioff()
 
 # ==== Functions ====
 
-def calculate_tax(transactions, avg_transaction_value, tax_brackets):
-    income = transactions * avg_transaction_value
-    for bracket in tax_brackets:
-        if income <= bracket['threshold']:
-            return income * bracket['rate']
-    return income * tax_brackets[-1]['rate']
+def calculate_tax(income, avg_transaction_value, tax_brackets):
+    if income <= tax_brackets['low']['threshold']:
+        return income * tax_brackets['low']['rate']
+    elif income <= tax_brackets['mid']['threshold']:
+        return income * tax_brackets['mid']['rate']
+    else:
+        return income * tax_brackets['high']['rate']
 
 def generate_dataset(start, end, seed, avg_transaction_value, initial_transactions, final_transactions,
                      costs_config, event_dips, seasonal_strength, initial_staff, inflation_trend,
@@ -70,7 +71,7 @@ def generate_dataset(start, end, seed, avg_transaction_value, initial_transactio
             for key, val in costs_config.items() if key != 'staff'
         }
 
-        tax = calculate_tax(transactions, avg_transaction_value, tax_brackets)
+        tax = calculate_tax(revenue, avg_transaction_value, tax_brackets)
         total_costs = sum(other_costs.values()) + salaries + tax
         net_profit = revenue - total_costs
 
@@ -118,35 +119,28 @@ elif os.path.exists("initial_conditions/initial_conditions.json"):
 with st.sidebar:
     st.header("Configuration")
     seed = st.number_input("Random Seed", value=json_data.get("seed", 42))
-    start_year = st.number_input("Start Year", min_value=2000, max_value=2100, value=json_data.get("start_year", 2020))
-    start_month = st.number_input("Start Month", min_value=1, max_value=12, value=json_data.get("start_month", 1))
+    start_year = st.number_input("Start Year", min_value=2000, max_value=2100, value=json_data.get("start_year", 2021))
+    start_month = st.number_input("Start Month", min_value=1, max_value=12, value=json_data.get("start_month", 3))
     end_year = st.number_input("End Year", min_value=2000, max_value=2100, value=json_data.get("end_year", 2025))
     end_month = st.number_input("End Month", min_value=1, max_value=12, value=json_data.get("end_month", 5))
     avg_transaction_value = st.number_input("Average Transaction Value ($)", value=json_data.get("avg_transaction_value", 25))
-    initial_transactions = st.number_input("Initial Monthly Transactions", value=json_data.get("initial_transactions", 1800))
-    final_transactions = st.number_input("Final Monthly Transactions", value=json_data.get("final_transactions", 2200))
+    initial_transactions = st.number_input("Initial Monthly Transactions", value=json_data.get("initial_transactions", 7000))
+    final_transactions = st.number_input("Final Monthly Transactions", value=json_data.get("final_transactions", 9100))
     seasonal_strength = st.slider("Seasonal Effect Strength", min_value=0.0, max_value=1.0, value=json_data.get("seasonal_strength", 0.2), step=0.01)
-    initial_staff = st.number_input("Initial Staff", min_value=1, max_value=30, value=json_data.get("initial_staff", 20))
+    initial_staff = st.number_input("Initial Staff", min_value=1, max_value=30, value=json_data.get("initial_staff", 5))
 
     st.subheader("Inflation Multiplier Trend (e.g. 1 = no change, 1.18 = 18% increase)")
     inflation_start = st.number_input("Initial Inflation Multiplier", value=json_data.get("inflation_start", 1.0))
     inflation_end = st.number_input("Final Inflation Multiplier", value=json_data.get("inflation_end", 1.18))
 
     st.subheader("Average Monthly Costs")
-    upkeep = st.number_input("Upkeep", value=json_data.get("upkeep", 3000))
-    staff = st.number_input("Staff (Base for Initial Staff)", value=json_data.get("staff", 12000))
-    operating_fees = st.number_input("Operating Fees", value=json_data.get("operating_fees", 1500))
-    insurance = st.number_input("Insurance", value=json_data.get("insurance", 800))
+    upkeep = st.number_input("Upkeep", value=json_data.get("upkeep", 1000))
+    staff = st.number_input("Staff (Base for Initial Staff)", value=json_data.get("staff", 5000))
+    operating_fees = st.number_input("Operating Fees", value=json_data.get("operating_fees", 63000))
+    insurance = st.number_input("Insurance", value=json_data.get("insurance", 15000))
 
     st.subheader("Event Dips")
-    dip_str = st.text_area("Event Dips (e.g., 2020-04:0.5)", value=json_data.get("event_dips_str", "2020-04:0.5\n2020-05:0.6\n2021-01:0.8"))
-
-    st.subheader("Tax Brackets")
-    tax_brackets = json_data.get("tax_brackets", [
-        {"threshold": 10000, "rate": 0.1},
-        {"threshold": 50000, "rate": 0.15},
-        {"threshold": float('inf'), "rate": 0.2}
-    ])
+    dip_str = st.text_area("Event Dips (e.g., 2020-04:0.5)", value="2020-03:0.7\n2020-04:0.6\n2021-01:0.8")
 
 if st.button("Generate Simulation"):
     costs_config = {
@@ -164,6 +158,12 @@ if st.button("Generate Simulation"):
             event_dips[(y, m)] = float(v)
         except:
             st.warning(f"Invalid dip format: {line}")
+
+    tax_brackets = json_data.get("tax_brackets", {
+        "low": {"threshold": 2500000, "rate": 0.10},
+        "mid": {"threshold": 7500000, "rate": 0.17},
+        "high": {"rate": 0.21}
+    })
 
     df = generate_dataset(
         (start_year, start_month), (end_year, end_month), seed,
@@ -212,27 +212,26 @@ if not os.path.exists("initial_conditions"):
 if not os.path.exists("initial_conditions/initial_conditions.json"):
     default_template = {
         "seed": 42,
-        "start_year": 2020,
-        "start_month": 1,
+        "start_year": 2021,
+        "start_month": 3,
         "end_year": 2025,
         "end_month": 5,
         "avg_transaction_value": 25,
-        "initial_transactions": 1800,
-        "final_transactions": 2200,
+        "initial_transactions": 7000,
+        "final_transactions": 9100,
         "seasonal_strength": 0.2,
-        "initial_staff": 20,
-        "upkeep": 3000,
-        "staff": 12000,
-        "operating_fees": 1500,
-        "insurance": 800,
+        "initial_staff": 5,
+        "upkeep": 1000,
+        "staff": 5000,
+        "operating_fees": 63000,
+        "insurance": 15000,
         "inflation_start": 1.0,
         "inflation_end": 1.18,
-        "event_dips_str": "2020-04:0.5\n2020-05:0.6\n2021-01:0.8",
-        "tax_brackets": [
-            {"threshold": 10000, "rate": 0.1},
-            {"threshold": 50000, "rate": 0.15},
-            {"threshold": float('inf'), "rate": 0.2}
-        ]
+        "tax_brackets": {
+            "low": {"threshold": 2500000, "rate": 0.10},
+            "mid": {"threshold": 7500000, "rate": 0.17},
+            "high": {"rate": 0.21}
+        }
     }
     with open("initial_conditions/initial_conditions.json", "w") as f:
         json.dump(default_template, f, indent=4)
