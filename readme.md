@@ -9,4 +9,5 @@ The requirements are stored in the requirements.txt, you can install them onto a
 `pip install -r requirements.txt`
 
 To run the app open a git bash terminal and run:</br>
+
 `streamlit run app.py`
