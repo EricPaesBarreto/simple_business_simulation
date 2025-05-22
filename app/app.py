@@ -177,7 +177,12 @@ if st.button("Generate Simulation"):
 
     selected_columns = st.multiselect("Select Additional Graph Columns", df.columns.tolist(), default=["transactions"])
 
-    fig, ax = plt.subplots(len(selected_columns) + 1, 1, figsize=(14, 5 + 3 * len(selected_columns)))
+    num_graphs = len(selected_columns) + 1
+    fig, ax = plt.subplots(num_graphs, 1, figsize=(14, 5 + 3 * num_graphs))
+
+    # Ensure ax is iterable
+    if num_graphs == 1:
+        ax = [ax]
 
     x = range(len(df['date']))
 
