@@ -13,6 +13,12 @@ from io import BytesIO
 
 plt.ioff()
 
+# ==== Session State Setup ====
+if "simulation_run" not in st.session_state:
+    st.session_state.simulation_run = False
+if "df" not in st.session_state:
+    st.session_state.df = None
+
 # ==== Functions ====
 
 def calculate_tax(income, avg_transaction_value, tax_brackets):
@@ -143,6 +149,8 @@ with st.sidebar:
     dip_str = st.text_area("Event Dips (e.g., 2020-04:0.5)", value="2020-03:0.7\n2020-04:0.6\n2021-01:0.8")
 
 if st.button("Generate Simulation"):
+    st.session_state.simulation_run = True
+
     costs_config = {
         "upkeep": upkeep,
         "staff": staff,
@@ -172,6 +180,13 @@ if st.button("Generate Simulation"):
         (inflation_start, inflation_end), tax_brackets
     )
 
+    st.session_state.df = df
+
+# === Show Output ===
+
+if st.session_state.simulation_run and st.session_state.df is not None:
+    df = st.session_state.df
+
     st.subheader("Simulation Results")
     st.dataframe(df)
 
@@ -180,15 +195,14 @@ if st.button("Generate Simulation"):
     num_graphs = len(selected_columns) + 1
     fig, ax = plt.subplots(num_graphs, 1, figsize=(14, 5 + 3 * num_graphs))
 
-    # Ensure ax is iterable
     if num_graphs == 1:
         ax = [ax]
 
     x = range(len(df['date']))
 
-    ax[0].plot(x, df['revenue'], label='Revenue', color='blue')
-    ax[0].plot(x, df['total_costs'], label='Total Costs', color='red')
-    ax[0].plot(x, df['net_profit'], label='Net Profit', color='green')
+    ax[0].fill_between(x, df['revenue'], label='Revenue', color='blue', alpha=0.3)
+    ax[0].fill_between(x, df['total_costs'], label='Total Costs', color='yellow', alpha=0.3)
+    ax[0].fill_between(x, df['net_profit'], label='Net Profit', color='green', alpha=0.3)
     ax[0].set_title("Revenue, Costs and Net Profit")
     ax[0].legend()
     ax[0].set_xticks(x)
@@ -210,6 +224,8 @@ if st.button("Generate Simulation"):
 
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button("📅 Download CSV", data=csv, file_name="simulation.csv", mime='text/csv')
+
+# === Save default config on first run ===
 
 if not os.path.exists("initial_conditions"):
     os.makedirs("initial_conditions")
@@ -240,3 +256,36 @@ if not os.path.exists("initial_conditions/initial_conditions.json"):
     }
     with open("initial_conditions/initial_conditions.json", "w") as f:
         json.dump(default_template, f, indent=4)
+
+# === Download current settings ===
+current_settings = {
+    "seed": seed,
+    "start_year": start_year,
+    "start_month": start_month,
+    "end_year": end_year,
+    "end_month": end_month,
+    "avg_transaction_value": avg_transaction_value,
+    "initial_transactions": initial_transactions,
+    "final_transactions": final_transactions,
+    "seasonal_strength": seasonal_strength,
+    "initial_staff": initial_staff,
+    "inflation_start": inflation_start,
+    "inflation_end": inflation_end,
+    "upkeep": upkeep,
+    "staff": staff,
+    "operating_fees": operating_fees,
+    "insurance": insurance,
+    "tax_brackets": json_data.get("tax_brackets", {
+        "low": {"threshold": 2500000, "rate": 0.10},
+        "mid": {"threshold": 7500000, "rate": 0.17},
+        "high": {"rate": 0.21}
+    })
+}
+
+json_str = json.dumps(current_settings, indent=4)
+st.download_button(
+    label="📥 Download Current Settings (JSON)",
+    data=json_str,
+    file_name="simulation_settings.json",
+    mime="application/json"
+)
