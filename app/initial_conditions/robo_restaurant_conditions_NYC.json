@@ -7,7 +7,7 @@
   "avg_transaction_value": 25,
   "initial_transactions": 7000,
   "final_transactions": 9100,
-  "seasonal_strength": 0.2,
+  "seasonal_strength": 0.04,
   "initial_staff": 5,
 
   "inflation_start": 1.0,
