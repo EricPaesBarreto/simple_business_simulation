@@ -1,33 +1,30 @@
-import os
-import json
-import math
-import numpy as np
-import pandas as pd
+# save as app.py
+
 import streamlit as st
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from io import BytesIO
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
-
-
+import math
+import json
+import os
+from io import BytesIO
 
 plt.ioff()
 
-# Functions
+# ==== Functions ====
 
-def calculate_tax(transactions, avg_transaction_value):
+def calculate_tax(transactions, avg_transaction_value, tax_brackets):
     income = transactions * avg_transaction_value
-    if income < 10000:
-        return income * 0.1
-    elif income < 50000:
-        return income * 0.15
-    else:
-        return income * 0.2
+    for bracket in tax_brackets:
+        if income <= bracket['threshold']:
+            return income * bracket['rate']
+    return income * tax_brackets[-1]['rate']
 
 def generate_dataset(start, end, seed, avg_transaction_value, initial_transactions, final_transactions,
                      costs_config, event_dips, seasonal_strength, initial_staff, inflation_trend,
-                     max_staff=30):
+                     tax_brackets, max_staff=30):
     np.random.seed(seed)
     data = []
     current = datetime(start[0], start[1], 1)
@@ -50,8 +47,8 @@ def generate_dataset(start, end, seed, avg_transaction_value, initial_transactio
         transactions = int(np.random.normal(base_transactions * seasonal_multiplier * dip * staff_multiplier, 100))
         revenue = transactions * avg_transaction_value
 
-        inflation = inflation_trend[0] + trend_fraction * (inflation_trend[1] - inflation_trend[0])
-        inflation += np.random.normal(0, 0.01)
+        inflation_multiplier = inflation_trend[0] + trend_fraction * (inflation_trend[1] - inflation_trend[0])
+        inflation_multiplier += np.random.normal(0, 0.005)
 
         base_salary = costs_config['staff'] / initial_staff
         low_salary = base_salary - 200
@@ -66,14 +63,14 @@ def generate_dataset(start, end, seed, avg_transaction_value, initial_transactio
             num_low * low_salary +
             num_mid * mid_salary +
             num_high * high_salary
-        ) * (1 + inflation)
+        ) * inflation_multiplier
 
         other_costs = {
             key: np.random.normal(val * (1 + 0.05 * math.sin(2 * math.pi * (current.month - 1) / 12)), val * 0.1)
             for key, val in costs_config.items() if key != 'staff'
         }
 
-        tax = calculate_tax(transactions, avg_transaction_value)
+        tax = calculate_tax(transactions, avg_transaction_value, tax_brackets)
         total_costs = sum(other_costs.values()) + salaries + tax
         net_profit = revenue - total_costs
 
@@ -90,7 +87,7 @@ def generate_dataset(start, end, seed, avg_transaction_value, initial_transactio
             "staff_costs": salaries,
             "staff_count": staff_count,
             "taxes": tax,
-            "inflation": inflation,
+            "inflation": inflation_multiplier,
             "total_costs": total_costs,
             "net_profit": net_profit
         })
@@ -99,7 +96,7 @@ def generate_dataset(start, end, seed, avg_transaction_value, initial_transactio
 
     return pd.DataFrame(data)
 
-# Streamlit UI
+# ==== Streamlit UI ====
 
 st.title("Cost & Profit Simulation Dashboard")
 
@@ -131,9 +128,9 @@ with st.sidebar:
     seasonal_strength = st.slider("Seasonal Effect Strength", min_value=0.0, max_value=1.0, value=json_data.get("seasonal_strength", 0.2), step=0.01)
     initial_staff = st.number_input("Initial Staff", min_value=1, max_value=30, value=json_data.get("initial_staff", 20))
 
-    st.subheader("Inflation Trend")
-    inflation_start = st.number_input("Initial Inflation Rate", value=json_data.get("inflation_start", 0.02))
-    inflation_end = st.number_input("Final Inflation Rate", value=json_data.get("inflation_end", 0.05))
+    st.subheader("Inflation Multiplier Trend (e.g. 1 = no change, 1.18 = 18% increase)")
+    inflation_start = st.number_input("Initial Inflation Multiplier", value=json_data.get("inflation_start", 1.0))
+    inflation_end = st.number_input("Final Inflation Multiplier", value=json_data.get("inflation_end", 1.18))
 
     st.subheader("Average Monthly Costs")
     upkeep = st.number_input("Upkeep", value=json_data.get("upkeep", 3000))
@@ -142,10 +139,14 @@ with st.sidebar:
     insurance = st.number_input("Insurance", value=json_data.get("insurance", 800))
 
     st.subheader("Event Dips")
-    dip_str = st.text_area("Event Dips (e.g., 2020-04:0.5)", value="2020-04:0.5\n2020-05:0.6\n2021-01:0.8")
+    dip_str = st.text_area("Event Dips (e.g., 2020-04:0.5)", value=json_data.get("event_dips_str", "2020-04:0.5\n2020-05:0.6\n2021-01:0.8"))
 
-if 'df' not in st.session_state:
-    st.session_state.df = None
+    st.subheader("Tax Brackets")
+    tax_brackets = json_data.get("tax_brackets", [
+        {"threshold": 10000, "rate": 0.1},
+        {"threshold": 50000, "rate": 0.15},
+        {"threshold": float('inf'), "rate": 0.2}
+    ])
 
 if st.button("Generate Simulation"):
     costs_config = {
@@ -168,13 +169,8 @@ if st.button("Generate Simulation"):
         (start_year, start_month), (end_year, end_month), seed,
         avg_transaction_value, initial_transactions, final_transactions,
         costs_config, event_dips, seasonal_strength, initial_staff,
-        (inflation_start, inflation_end)
+        (inflation_start, inflation_end), tax_brackets
     )
-
-    st.session_state.df = df
-
-if st.session_state.df is not None:
-    df = st.session_state.df
 
     st.subheader("Simulation Results")
     st.dataframe(df)
@@ -229,8 +225,14 @@ if not os.path.exists("initial_conditions/initial_conditions.json"):
         "staff": 12000,
         "operating_fees": 1500,
         "insurance": 800,
-        "inflation_start": 0.02,
-        "inflation_end": 0.05
+        "inflation_start": 1.0,
+        "inflation_end": 1.18,
+        "event_dips_str": "2020-04:0.5\n2020-05:0.6\n2021-01:0.8",
+        "tax_brackets": [
+            {"threshold": 10000, "rate": 0.1},
+            {"threshold": 50000, "rate": 0.15},
+            {"threshold": float('inf'), "rate": 0.2}
+        ]
     }
     with open("initial_conditions/initial_conditions.json", "w") as f:
         json.dump(default_template, f, indent=4)

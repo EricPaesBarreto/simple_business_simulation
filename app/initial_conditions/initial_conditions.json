@@ -1,7 +1,7 @@
 {
     "seed": 42,
-    "start_year": 2020,
-    "start_month": 1,
+    "start_year": 2021,
+    "start_month": 3,
     "end_year": 2025,
     "end_month": 5,
     "avg_transaction_value": 25,
@@ -13,6 +13,6 @@
     "staff": 12000,
     "operating_fees": 1500,
     "insurance": 800,
-    "inflation_start": 0.02,
-    "inflation_end": 0.05
+    "inflation_start": 0.002,
+    "inflation_end": 0.0035
 }
